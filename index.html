@@ -1,4 +1,4 @@
-<!doctype html2>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -81,7 +81,7 @@
     pointer-events:none;text-align:right;
   }
   /* Mobile-ish disclaimer (narrow OR portrait small device) */
-  @media (max-width:600px), (orientation:portrait) and (max-width:1024px){
+  @media (max-width:600px), (orientation:portrait) and (max-width:1024px), (orientation:landscape) and (max-height:500px){
     .disclaimer{max-width:160px;font-size:9px;padding:5px 8px;margin:6px;line-height:1.3}
   }
 
@@ -130,7 +130,7 @@
      Using both conditions so a phone in portrait always gets cleanup even if the browser
      misreports width (PWA / iframe quirks etc.). Landscape phones >600px wide skip these
      and keep the desktop-style layout, which is what we want. */
-  @media (max-width:600px), (orientation:portrait) and (max-width:1024px){
+  @media (max-width:600px), (orientation:portrait) and (max-width:1024px), (orientation:landscape) and (max-height:500px){
     /* Hide the status pill — the chip near the knee + the calibration toast
        give enough feedback on the small screen */
     #statusPill{display:none !important}
