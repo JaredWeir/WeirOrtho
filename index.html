@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
-<title>Weir Orthopaedics — Movement Explorer</title>
+<title>Weir Orthopaedics — Knee ROM</title>
 <style>
   :root{
     --bg:#000;
@@ -253,13 +253,23 @@
   <text x="300" y="295" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="600" font-size="44" fill="#1d8fc2" letter-spacing="6">ORTHOPAEDICS</text>
 </svg>
 
-<script type="module">
-import {
-  PoseLandmarker,
-  FilesetResolver
-} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+<!-- TensorFlow.js + pose-detection loaded as UMD bundles. We use the canonical
+     UMD scripts (instead of jsdelivr's +esm shim) so that pose-detection sees
+     the same tfjs-core instance we registered the WebGL backend on — otherwise
+     createDetector() hangs because its peer-dep tfjs-core has no backends. -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.22.0/dist/tf-core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.22.0/dist/tf-converter.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.22.0/dist/tf-backend-webgl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 
+<script type="module">
 import confetti from "https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/+esm";
+
+// TF.js + pose-detection arrive as UMD globals (see <script> tags above). The
+// regular scripts execute during HTML parsing; this module is deferred and
+// runs after they finish, so window.tf / window.poseDetection are ready here.
+const tf = window.tf;
+const poseDetection = window.poseDetection;
 
 // ---------- DOM ----------
 const stage    = document.getElementById('stage');
@@ -287,7 +297,7 @@ const state = {
   facing: 'user',
   isMobile: /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent),
   stream: null,
-  poseLandmarker: null,
+  detector: null,
   running: false,
   lastVideoTime: -1,
   maxFlex: -Infinity,
@@ -366,19 +376,20 @@ flipBtn.addEventListener('click', async ()=>{
 });
 
 // ---------- Pose model ----------
+// v2: MoveNet SinglePose Thunder via TensorFlow.js. Heavier than Lightning
+// but more accurate at the joint, which matters for ROM measurement. WebGL
+// backend gives us GPU acceleration in the browser.
 async function loadModel(){
   setStatus('Loading model…', true);
-  const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  await tf.ready();
+  try { await tf.setBackend('webgl'); await tf.ready(); } catch(e){ /* let TF pick a fallback backend */ }
+  state.detector = await poseDetection.createDetector(
+    poseDetection.SupportedModels.MoveNet,
+    {
+      modelType: poseDetection.movenet.modelType.SINGLEPOSE_THUNDER,
+      enableSmoothing: false   // we apply our own EMA in smooth()
+    }
   );
-  state.poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
-    baseOptions:{
-      modelAssetPath:"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
-      delegate:"GPU"
-    },
-    runningMode:"VIDEO",
-    numPoses:1
-  });
 }
 
 // ---------- Camera ----------
@@ -444,16 +455,11 @@ function smooth(key, p){
 }
 function resetSmoothing(){ smoothCache.clear(); }
 
-// ---------- Display bucketing ----------
-// Round to tens. Two boundary rules requested:
-//   • anything < 9°  → 0   (so a near-extension reading reads as "0")
-//   • anything ≥ 81° → 90  (so reaching the celebration zone shows as "90"
-//                           even before the model says exactly 90)
-// Above 90 we keep rounding to nearest 10 (95→100, 105→110, …).
+// ---------- Display rounding ----------
+// Standard half-up rounding to the nearest 5°. No special cases at 0 or 90 —
+// the displayed value is whatever the measured angle rounds to.
 function bucketAngle(v){
-  if (v < 9)  return 0;
-  if (v >= 81) return Math.max(90, Math.round(v / 10) * 10);
-  return Math.round(v / 10) * 10;
+  return Math.round(v / 5) * 5;
 }
 
 // ---------- Math ----------
@@ -537,11 +543,12 @@ function roundRect(ctx, x, y, w, h, r){
 }
 
 // ---------- Confetti ----------
-// Fire as soon as the displayed bucket flips to "90" — that's the moment the
-// chip turns blue and the patient sees the achievement. Re-arm only after
-// they've clearly come back out of that zone, to avoid spammy refires when
-// the angle hovers at the boundary.
-const CONF_FIRE  = 81;
+// Fire the instant the displayed value rounds to 90° — that's when the chip
+// turns blue and the patient sees the achievement. With standard rounding to
+// the nearest 5, that happens at 87.5°. Re-arm only after they've clearly come
+// back out of that zone, to avoid spammy refires when the angle hovers near
+// the boundary.
+const CONF_FIRE  = 87.5;
 const CONF_REARM = 70;
 
 function celebrate(){
@@ -623,17 +630,19 @@ function lmPx(p){
 }
 
 function tryAutoCalibrate(lm){
-  // Pick the LANDMARK INDICES of the opposite (un-tested) leg
+  // Pick the LANDMARK INDICES of the opposite (un-tested) leg.
+  // MoveNet's 17-point convention: 11=L hip, 12=R hip, 13=L knee, 14=R knee,
+  // 15=L ankle, 16=R ankle.
   const opp = state.side === 'left'
-    ? { hip:24, knee:26, ankle:28 }   // active = left, reference = right
-    : { hip:23, knee:25, ankle:27 };  // active = right, reference = left
+    ? { hip:12, knee:14, ankle:16 }   // active = left, reference = right
+    : { hip:11, knee:13, ankle:15 };  // active = right, reference = left
 
   const vis = (p) => p && (p.visibility === undefined || p.visibility > OPP_VIS_MIN);
   if (!vis(lm[opp.hip]) || !vis(lm[opp.knee]) || !vis(lm[opp.ankle])) return;
 
-  // 2D image-space angle (aspect-corrected). For supine ROM the leg moves in
-  // the camera's image plane, so 2D is more accurate than the noisier 3D
-  // worldLandmarks depth estimate.
+  // 2D image-space angle (aspect-corrected). MoveNet only emits 2D keypoints,
+  // and for supine ROM the leg swings in the image plane anyway — so 2D is
+  // exactly the right space to measure in.
   const inner = angleDeg(lmPx(lm[opp.hip]), lmPx(lm[opp.knee]), lmPx(lm[opp.ankle]));
   if (!isFinite(inner)) return;
   const oppFlex = 180 - inner;
@@ -664,9 +673,10 @@ function tryAutoCalibrate(lm){
 
 // ---------- Main loop ----------
 function pickSide(landmarks){
+  // MoveNet 17-point indices for the active leg's hip/knee/ankle.
   const idx = state.side === 'left'
-    ? { hip:23, knee:25, ankle:27 }
-    : { hip:24, knee:26, ankle:28 };
+    ? { hip:11, knee:13, ankle:15 }
+    : { hip:12, knee:14, ankle:16 };
   return {
     hip: landmarks[idx.hip],
     knee: landmarks[idx.knee],
@@ -674,23 +684,40 @@ function pickSide(landmarks){
   };
 }
 
-function loop(){
-  if(!state.poseLandmarker || video.readyState < 2){
+async function loop(){
+  if(!state.detector || video.readyState < 2){
     requestAnimationFrame(loop);
     return;
   }
   const t = video.currentTime;
   if(t !== state.lastVideoTime){
     state.lastVideoTime = t;
-    const result = state.poseLandmarker.detectForVideo(video, performance.now());
+
+    let poses = null;
+    try {
+      // flipHorizontal:false — we mirror via CSS, so the model sees the raw video.
+      poses = await state.detector.estimatePoses(video, { flipHorizontal: false });
+    } catch(err){
+      console.error(err);
+    }
+
     ctx.clearRect(0,0,overlay.width,overlay.height);
 
-    if(result && result.landmarks && result.landmarks[0]){
-      const rawLm = result.landmarks[0];
-      const rawWlm = result.worldLandmarks && result.worldLandmarks[0];
+    if(poses && poses[0] && poses[0].keypoints){
+      // MoveNet returns 17 keypoints {x, y, score, name} in INPUT pixel coords
+      // (matching video.videoWidth × videoHeight). Normalize back to 0..1 and
+      // map score → visibility so the rest of the pipeline (videoToCanvas,
+      // lmPx, smoothing, vis thresholds, calibration) keeps working unchanged.
+      const vw = video.videoWidth  || 1;
+      const vh = video.videoHeight || 1;
+      const rawLm = poses[0].keypoints.map(k => ({
+        x: k.x / vw,
+        y: k.y / vh,
+        z: 0,
+        visibility: k.score,
+      }));
 
-      const lm  = rawLm.map((p, i)  => smooth('lm:'+i,  p));
-      const wlm = rawWlm ? rawWlm.map((p, i) => smooth('wlm:'+i, p)) : null;
+      const lm = rawLm.map((p, i) => smooth('lm:'+i, p));
 
       const sel = pickSide(lm);
 
@@ -700,8 +727,8 @@ function loop(){
         const kneeP  = videoToCanvas(sel.knee.x,  sel.knee.y);
         const ankleP = videoToCanvas(sel.ankle.x, sel.ankle.y);
 
-        // 2D image-space angle (aspect-corrected) — see lmPx() / tryAutoCalibrate
-        // for why 2D beats 3D worldLandmarks for in-plane supine motion.
+        // 2D image-space angle (aspect-corrected). See lmPx() and
+        // tryAutoCalibrate for why measuring in image space is the right call.
         const inner = angleDeg(lmPx(sel.hip), lmPx(sel.knee), lmPx(sel.ankle));
         const flexion = 180 - inner;
 
