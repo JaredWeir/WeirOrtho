@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Weirplasty Customization - Gait Data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500;1,600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0A0B; --ink:#F3EFE8; --muted:#94908A; --faint:#5E5B56;
+    --gold:#C9A86A; --gold-dim:#9C835184; --line:rgba(243,239,232,.13);
+    --card:#0F0F11; --plat:#E9E7E2;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:"Montserrat",sans-serif;color:var(--ink);min-height:100vh;
+    background:radial-gradient(130% 100% at 50% -20%, #161618 0%, var(--bg) 60%, #050506 100%);
+    display:flex;align-items:flex-start;justify-content:center;padding:34px 20px 70px;line-height:1.55;
+  }
+  .wrap{width:100%;max-width:500px}
+
+  /* brand wordmark */
+  .brand{text-align:center;margin-bottom:30px;animation:fade 1s ease both}
+  .wm{font-family:"Playfair Display",serif;font-style:italic;font-weight:500;font-size:44px;line-height:.95;letter-spacing:.5px;position:relative;display:inline-block}
+  .wm sup{font-style:normal;font-family:"Montserrat";font-size:13px;font-weight:400;top:-1.4em;letter-spacing:0;margin-left:1px}
+  .wm-sub{font-family:"Montserrat";text-transform:uppercase;letter-spacing:.44em;font-size:11px;font-weight:500;margin-top:11px;padding-left:.44em;color:var(--ink)}
+  .rule{width:46px;height:1px;background:var(--gold);opacity:.6;margin:18px auto 0}
+
+  .card{animation:rise .6s cubic-bezier(.2,.7,.3,1) both}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+
+  .eyebrow{font-family:"Montserrat";text-transform:uppercase;letter-spacing:.32em;font-size:10.5px;font-weight:600;color:var(--gold);margin-bottom:18px;text-align:center}
+  h1{font-family:"Montserrat",sans-serif;font-weight:400;font-size:21px;line-height:1.5;text-align:center;letter-spacing:.005em;margin-bottom:20px}
+  .sub{font-family:"Montserrat";font-weight:300;font-size:15px;color:var(--muted);text-align:center;line-height:1.65;margin-bottom:30px}
+  .sub b{color:var(--ink);font-weight:500}
+  .ital{font-family:"Playfair Display",serif;font-style:italic;font-weight:500;font-size:1.1em;letter-spacing:.2px}
+  .q{font-family:"Montserrat",sans-serif;font-weight:400;font-size:19px;line-height:1.55;text-align:center;margin:8px 0 30px}
+
+  button{font-family:inherit;cursor:pointer;border:none}
+  .btn{display:block;width:100%;background:linear-gradient(180deg,#E7D3A8,var(--gold));color:#13110C;
+    padding:17px;border-radius:2px;font-family:"Montserrat";font-weight:600;font-size:12.5px;text-transform:uppercase;
+    letter-spacing:.22em;transition:transform .14s ease,filter .2s;margin-top:4px;text-align:center;text-decoration:none}
+  .btn:active{transform:scale(.985)} .btn:hover{filter:brightness(1.07)}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--gold);color:var(--gold)}
+
+  .yn{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+  .yn button{padding:26px 12px;border:1px solid var(--line);background:rgba(255,255,255,.015);
+    font-family:"Playfair Display",serif;font-style:italic;font-size:21px;color:var(--ink);border-radius:2px;transition:.18s}
+  .yn button:hover{border-color:var(--gold);color:var(--gold)}
+  .yn button:active{transform:scale(.98)}
+
+  .field{margin:18px 0}
+  .field label{display:block;font-family:"Montserrat";font-weight:400;font-size:13px;color:var(--muted);margin-bottom:9px;line-height:1.5}
+  .field label b{color:var(--ink);font-weight:500}
+  .field input[type=number]{width:100%;padding:15px;border:1px solid var(--line);border-radius:2px;font-size:18px;
+    font-family:"Playfair Display",serif;background:rgba(255,255,255,.02);color:var(--ink);text-align:center}
+  .field input:focus{outline:none;border-color:var(--gold)}
+
+  .status{font-family:"Montserrat";font-size:12px;color:var(--gold);margin-top:14px;min-height:16px;text-align:center;font-weight:300;letter-spacing:.04em}
+  .back{background:none;color:var(--faint);font-family:"Montserrat";font-size:11px;text-transform:uppercase;letter-spacing:.2em;padding:14px;margin-top:10px;width:100%;font-weight:500}
+  .back:hover{color:var(--muted)}
+  .instr{font-family:"Montserrat";font-weight:300;font-size:13.5px;color:var(--muted);text-align:center;line-height:1.7;margin-bottom:22px}
+  .instr b{color:var(--ink);font-weight:500}
+
+  /* result */
+  .res{text-align:center;padding:14px 0 4px;animation:rise .7s cubic-bezier(.2,.7,.3,1) both}
+  .res .for{font-family:"Montserrat";text-transform:uppercase;letter-spacing:.3em;font-size:10px;color:var(--faint);margin-bottom:22px}
+  .res .word{font-family:"Playfair Display",serif;font-style:italic;font-weight:600;font-size:54px;line-height:1;margin-bottom:6px}
+  .res.preserve .word{color:var(--gold)}
+  .res.resurface .word{color:var(--plat)}
+  .res .tag{font-family:"Montserrat";text-transform:uppercase;letter-spacing:.26em;font-size:11px;font-weight:500;color:var(--muted);margin-top:14px}
+  .divider{width:40px;height:1px;background:var(--line);margin:28px auto}
+  .record{border:1px solid var(--line);border-radius:2px;padding:18px;text-align:center;margin:0 0 8px}
+  .record .rl{font-family:"Montserrat";text-transform:uppercase;letter-spacing:.24em;font-size:9.5px;color:var(--faint);margin-bottom:10px}
+  .record .rv{font-family:"Montserrat";font-weight:500;font-size:15px;letter-spacing:.02em;color:var(--ink)}
+  .record .rv .pre{color:var(--gold)} .record .rv .res2{color:var(--plat)}
+  .copy{margin-top:14px;background:none;border:1px solid var(--line);color:var(--muted);font-family:"Montserrat";
+    font-size:10px;text-transform:uppercase;letter-spacing:.2em;padding:9px 16px;border-radius:2px}
+  .copy:hover{border-color:var(--gold);color:var(--gold)}
+  .note{font-family:"Montserrat";font-weight:300;font-size:11.5px;color:var(--faint);text-align:center;margin-top:20px;line-height:1.6}
+
+  .hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <div class="wm">Weirplasty<sup>&trade;</sup></div>
+    <div class="wm-sub">Knee Resurfacing</div>
+    <div class="rule"></div>
+  </div>
+
+  <!-- WELCOME -->
+  <div class="card" id="s-welcome">
+    <h1>Personalizing your <span class="ital">Weirplasty</span> knee resurfacing from your gait data.</h1>
+    <p class="sub">Please hand the phone to your <b>care concierge</b> to continue.</p>
+    <button class="btn" onclick="startFlow()">Begin</button>
+  </div>
+
+  <!-- STAIRS -->
+  <div class="card hide" id="s-stairs">
+    <div class="eyebrow">One question</div>
+    <div class="q">Do you have pain right at the front, under your kneecap, that gets worse with stairs?</div>
+    <div class="yn">
+      <button onclick="setStairs('yes')">Yes</button>
+      <button onclick="setStairs('no')">No</button>
+    </div>
+  </div>
+
+  <!-- MANUAL -->
+  <div class="card hide" id="s-manual">
+    <div class="eyebrow">Gait data</div>
+    <p class="instr" id="manual-instr"></p>
+    <a class="btn ghost hide" id="open-health" href="x-apple-health://" style="margin-bottom:18px">Open Health app</a>
+    <div class="field">
+      <label>Enter the <b>average flights climbed</b> shown for the 6-month view.</label>
+      <input type="number" id="m-avg" min="0" step="0.1" inputmode="decimal" placeholder="&mdash;">
+    </div>
+    <button class="btn" onclick="submitManual()">Continue</button>
+    <div class="status" id="mstatus"></div>
+    <button class="back" onclick="go('s-stairs')">Back</button>
+  </div>
+
+  <!-- ANALYSING -->
+  <div class="card hide" id="s-analyse">
+    <div class="eyebrow">One moment</div>
+    <h1>Personalizing&hellip;</h1>
+  </div>
+
+  <!-- ANALYZING PHONE (Android) -->
+  <div class="card hide" id="s-analyzing">
+    <div class="eyebrow">One moment</div>
+    <h1>Analyzing phone&hellip;</h1>
+  </div>
+
+  <!-- RESULT -->
+  <div class="card hide" id="s-result">
+    <div id="res-body"></div>
+    <p class="note" id="res-note"></p>
+    <button class="btn ghost" style="margin-top:26px" onclick="resetAll()">New patient</button>
+  </div>
+
+</div>
+
+<script>
+/* ---------- OS detection ---------- */
+const OS = (function(){
+  const ua=navigator.userAgent||'', plat=navigator.platform||'';
+  if(/iPad|iPhone|iPod/.test(ua) || (plat==='MacIntel' && navigator.maxTouchPoints>1)) return 'ios';
+  if(/Android/.test(ua)) return 'android';
+  return 'other';
+})();
+
+/* ---------- config ---------- */
+const CFG={flights:3,prop:0.50,minDays:30,lookback:90};
+
+/* ---------- state / nav ---------- */
+const state={stairsPain:null,flights:null,outcome:null,androidAuto:false};
+function val(id){return document.getElementById(id).value;}
+function go(id){
+  document.querySelectorAll('.card').forEach(e=>e.classList.add('hide'));
+  const el=document.getElementById(id); el.classList.remove('hide');
+  el.style.animation='none'; void el.offsetWidth; el.style.animation='rise .55s cubic-bezier(.2,.7,.3,1) both';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function startFlow(){
+  if(OS!=='ios'){
+    state.stairsPain=null; state.flights=null; state.androidAuto=true;
+    go('s-analyzing'); setTimeout(evaluate,1600);
+  } else { state.androidAuto=false; go('s-stairs'); }
+}
+function setStairs(v){
+  state.stairsPain=v;
+  if(v==='yes'){ state.flights=null; evaluate(); }
+  else { go('s-manual'); }
+}
+
+/* ---------- instructions per OS ---------- */
+function tailorOS(){
+  const man=document.getElementById('manual-instr');
+  if(OS==='ios'){
+    const oh=document.getElementById('open-health'); if(oh) oh.classList.remove('hide');
+    man.innerHTML='Tap <b>Open Health app</b>, then go to <b>Browse &rarr; Activity &rarr; Flights Climbed</b>, tap <b>6M</b>, and enter the <b>average</b> below.';
+  } else {
+    man.innerHTML='Open your health app, find <b>Flights Climbed</b> or <b>Floors</b>, view the 6-month average, and enter it below.';
+  }
+}
+
+/* ---------- manual ---------- */
+function submitManual(){
+  const avg=parseFloat(val('m-avg'));
+  if(isNaN(avg)||avg<0){ status('mstatus','Enter the average flights climbed.'); return; }
+  state.flights={avg:avg};
+  go('s-analyse'); setTimeout(evaluate,750);
+}
+
+/* ---------- decision ---------- */
+function evaluate(){
+  const f=state.flights;
+  let preserve=false;
+  if(state.stairsPain==='yes'){ preserve=false; }
+  else if(!f){ preserve=false; }
+  else if(f.avg!=null){ preserve = f.avg >= CFG.flights; }
+  else if(f.validDays<CFG.minDays){ preserve=false; }
+  else { preserve = (f.daysOver/f.validDays) >= CFG.prop; }
+  state.outcome = preserve?'preserve':'resurface';
+
+  const body=document.getElementById('res-body');
+  if(preserve){
+    body.innerHTML='<div class="res preserve"><div class="for">Patellar plan</div><div class="word">Preserve</div><div class="tag">Native patella retained</div></div>';
+  } else {
+    body.innerHTML='<div class="res resurface"><div class="for">Patellar plan</div><div class="word">Resurface</div><div class="tag">Patellar component placed</div></div>';
+  }
+  document.getElementById('res-note').textContent =
+    state.androidAuto ? 'Based on your device data.'
+    : !f ? 'Based on the screening response.'
+    : (f.avg!=null ? `Based on your 6-month average of ${f.avg} flights per day.`
+                   : `Based on ${f.validDays} days of gait data.`);
+  go('s-result');
+}
+function status(id,msg){ document.getElementById(id).textContent=msg; }
+function resetAll(){
+  state.stairsPain=null; state.flights=null; state.outcome=null; state.androidAuto=false;
+  ['m-avg'].forEach(i=>{const e=document.getElementById(i); if(e)e.value='';});
+  status('mstatus','');
+  go('s-welcome');
+}
+
+tailorOS();
+</script>
+</body>
+</html>
